@@ -145,6 +145,7 @@ namespace iServer
 
                         // Close the socket and clear the header hash
                         iSocket.Close();
+                        iSocket.Shutdown(SocketShutdown.Both);
                         iSocket.Dispose();
                         respHeader.Clear();
                     }
