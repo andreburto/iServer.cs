@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Windows.Forms;
 
 namespace iServer
 {
@@ -19,7 +20,7 @@ namespace iServer
         private TcpListener iListener;
         private int iPort;
         private Thread th;
-        
+
         // Dump everything out to the browser through the socket
         public void SendToBrowser(string data, Socket iSocket)
         {
@@ -85,22 +86,27 @@ namespace iServer
             this.iListener = new TcpListener(IPAddress.Any, this.iPort);
             this.iListener.Start();
 
-            while (goon==true)
+            while (goon == true)
             {
                 try
                 {
                     if (this.iListener.Pending() == false)
                     {
-                        Thread.Sleep(100);
                         continue;
                     }
 
                     Socket iSocket = this.iListener.AcceptSocket();
+                    iSocket.ReceiveTimeout = 2000;
+                    iSocket.SendTimeout = 2000;
 
-                    if (iSocket.Connected==true)
+                    if (iSocket.Connected == true)
                     {
+                        // Ugly to wait for all the data to pipe through.
+                        Thread.Sleep(100);
+
+                        // The Recieve right below needs to be in a loop to read until the length is 0.
                         Byte[] reqRecv = new Byte[iSocket.ReceiveBufferSize];
-                        int recvLen = iSocket.Receive(reqRecv);
+                        int recvLen = iSocket.Receive(reqRecv, SocketFlags.None);
                         string reqBuffer = Encoding.UTF8.GetString(reqRecv);
                         Hashtable headers = parseHeader(reqBuffer);
                         string reqMethod = reqBuffer.Substring(0, 4).ToUpper().Replace(" ", "");
@@ -115,7 +121,7 @@ namespace iServer
                             string pathTemp = System.Uri.UnescapeDataString(path);
                             if (reqBuffer.IndexOf("?") > -1)
                             {
-                                char[] sp = {'?'};
+                                char[] sp = { '?' };
                                 string[] parts = path.Split(sp, 2);
                                 path = parts[0];
                                 args = parts[1];
@@ -136,6 +142,7 @@ namespace iServer
                         else
                         {
                             iSocket.Close();
+                            iSocket.Shutdown(SocketShutdown.Both);
                             iSocket.Dispose();
                             continue;
                         }
@@ -145,14 +152,13 @@ namespace iServer
 
                         // Close the socket and clear the header hash
                         iSocket.Close();
-                        iSocket.Shutdown(SocketShutdown.Both);
                         iSocket.Dispose();
                         respHeader.Clear();
                     }
                 }
                 catch (Exception ex)
                 {
-                    throw new Exception(ex.Message);
+                    //throw new Exception(ex.Message);
                 }
             }
 
@@ -171,7 +177,7 @@ namespace iServer
                 if (cnt > 0)
                 {
                     if (line.Length == 0) { break; }
-                    string[] strsep = {": ", ":"};
+                    string[] strsep = { ": ", ":" };
                     string[] parts = line.Split(strsep, 2, System.StringSplitOptions.None);
                     if (parts.Length == 2) { vals.Add(parts[0], parts[1]); }
                 }
@@ -191,6 +197,7 @@ namespace iServer
 
             foreach (string line in headers)
             {
+
                 if (keeploop == 0)
                 {
                     if (line.Length == 0)
