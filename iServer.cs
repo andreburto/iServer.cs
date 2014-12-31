@@ -101,7 +101,7 @@ namespace iServer
                     if (iSocket.Connected == true)
                     {
                         // Ugly to wait for all the data to pipe through.
-                        Thread.Sleep(100);
+                        Thread.Sleep(250);
 
                         // The Recieve right below needs to be in a loop to read until the length is 0.
                         Byte[] reqRecv = new Byte[iSocket.ReceiveBufferSize];
@@ -215,6 +215,25 @@ namespace iServer
             }
 
             return data;
+        }
+
+        // Parse arguments
+        protected Hashtable parseArgs(string args)
+        {
+            if (args.Length == 0) { return new Hashtable(); }
+
+            char[] spa = { '&' };
+            char[] spb = { '=' };
+            Hashtable argList = new Hashtable();
+            string[] parts = args.Split(spa);
+
+            foreach (string arg in parts)
+            {
+                string[] keyval = arg.Split(spb, 2);
+                argList[keyval[0].ToString()] = System.Uri.UnescapeDataString(keyval[1].ToString().Replace("+", " "));
+            }
+
+            return argList;
         }
 
         // Start the server
